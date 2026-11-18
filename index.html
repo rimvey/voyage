@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시스템 보안 설계 워크벤치</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2230;--mute:#667085;--line:#d9dde5;--ok:#157f3b;--okbg:#e4f5ea;--bad:#b42318;--badbg:#fdeaea;--acc:#2455d6;--accbg:#e6edfc;--warn:#9a5b00;--warnbg:#fff3d6}
+@media(prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1b202b;--ink:#e8ebf2;--mute:#9aa3b5;--line:#2e3646;--ok:#5fd38a;--okbg:#17301f;--bad:#ff8a80;--badbg:#3a1c1c;--acc:#7da2ff;--accbg:#1e2a4a;--warn:#f0b84a;--warnbg:#3a2e12}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Noto Sans KR",sans-serif}
+header{padding:14px 20px;border-bottom:1px solid var(--line);background:var(--card)}
+header h1{margin:0;font-size:18px}
+header p{margin:2px 0 0;color:var(--mute);font-size:12px}
+main{display:grid;grid-template-columns:minmax(260px,1fr) minmax(380px,1.4fr) minmax(300px,1.2fr);gap:14px;padding:14px 20px;align-items:start}
+@media(max-width:1000px){main{grid-template-columns:1fr}}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+h2{margin:0 0 4px;font-size:15px}
+.src{color:var(--mute);font-size:11px;margin-bottom:10px}
+h3{margin:14px 0 6px;font-size:13px}
+.item{display:flex;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item .t{flex:1}
+.item b{display:block}
+.item small{color:var(--mute)}
+.badge{align-self:flex-start;font-size:11px;padding:1px 7px;border-radius:99px;white-space:nowrap}
+.ok{background:var(--okbg);color:var(--ok)}.bad{background:var(--badbg);color:var(--bad)}
+.prog{margin:8px 0 0;font-size:12px;color:var(--mute)}
+table.m{border-collapse:collapse;width:100%;table-layout:fixed}
+.m th,.m td{border:1px solid var(--line);text-align:center;padding:4px;font-size:12px}
+.m th{background:var(--bg);font-weight:600}
+.m th.empty{background:var(--warnbg);color:var(--warn)}
+.m td button{width:100%;height:36px;border:0;background:transparent;color:var(--ink);cursor:pointer;border-radius:4px;font-size:16px}
+.m td button[aria-pressed=true]{background:var(--accbg);color:var(--acc);font-weight:700}
+.m td button:hover{outline:1px solid var(--acc)}
+.warns{margin-top:10px}
+.warn{background:var(--warnbg);color:var(--warn);padding:6px 10px;border-radius:6px;margin-top:6px;font-size:13px}
+.good{background:var(--okbg);color:var(--ok);padding:6px 10px;border-radius:6px;font-size:13px}
+.sl{margin:10px 0}
+.sl .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sl output{font-weight:700;min-width:5ch;text-align:right}
+.sl input{width:100%}
+.sl .j{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-top:2px}
+.sl .j span:first-child{color:var(--mute)}
+.atk{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.atk div{background:var(--bg);border-radius:8px;padding:8px 10px}
+.atk small{color:var(--mute);display:block}
+.atk strong{font-size:18px}
+pre{margin:0;background:#0f1420;color:#d6e2ff;border-radius:8px;padding:10px 12px;overflow:auto;font:12px/1.55 ui-monospace,Menlo,Consolas,monospace}
+.ready{margin-top:10px;padding:6px 10px;border-radius:6px;font-size:13px}
+label.chk{display:flex;gap:6px;align-items:center;margin-right:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>1장 시스템 보안 설계 워크벤치</h1>
+<p>판정 기준·설정 파일은 SPEC.md 규칙만 따릅니다. 출처 표기는 학습모듈 표 번호/세부학습 번호입니다.</p>
+</header>
+<main>
+
+<!-- 왼쪽: 체크리스트 -->
+<section id="left" aria-labelledby="hl">
+<h2 id="hl">계정·비밀번호 요건 체크리스트</h2>
+<div class="src">[표 1-6, 표 1-7 / 세부학습 1-1] 직접 확인한 항목을 체크하세요. 정책 슬라이더와 연결된 항목은 자동 판정됩니다.</div>
+<h3>계정 관리 5개 (표 1-6)</h3>
+<div id="acct"></div>
+<h3>비밀번호 5개 (표 1-7)</h3>
+<div id="pw"></div>
+<div class="prog" id="prog"></div>
+</section>
+
+<!-- 가운데: 매트릭스 -->
+<section id="mid" aria-labelledby="hm">
+<h2 id="hm">설계 매트릭스 5계층 × 6기술영역</h2>
+<div class="src">[표 1-21, 표 1-22, 그림 1-1] 칸을 눌러 설계 항목이 있는 곳을 표시하세요.</div>
+<table class="m" id="matrix"></table>
+<div class="warns" id="mwarn"></div>
+
+<h3>구현 준비 점검 (세부학습 1-3)</h3>
+<div>
+<strong style="font-size:12px">환경 3유형</strong><br>
+<div id="envs" style="margin:4px 0 8px"></div>
+<strong style="font-size:12px">도구 3종</strong><br>
+<div id="tools" style="margin:4px 0"></div>
+</div>
+<div class="ready" id="ready"></div>
+</section>
+
+<!-- 오른쪽: 정책 -->
+<section id="right" aria-labelledby="hr">
+<h2 id="hr">정책 값</h2>
+<div class="src">[표 1-7, 표 2-1] 슬라이더를 움직이면 판정·공격 시간·설정 문구가 바로 바뀝니다.</div>
+<div id="sliders"></div>
+
+<h3>평균 공격 성공 시간 (1-7)</h3>
+<div class="atk">
+<div><small>오프라인 (초당 1e10회)</small><strong id="off"></strong></div>
+<div><small id="onl">온라인</small><strong id="on"></strong></div>
+</div>
+<div class="src" style="margin-top:6px" id="atkinfo"></div>
+
+<h3>리눅스 설정 문구 (표 2-1, 2-5~2-9)</h3>
+<pre id="conf"></pre>
+</section>
+</main>
+
+<script>
+// ---------- 데이터 (SPEC.md 1절) ----------
+const ACCT=[
+ ['1-1-1','기본(Default) 계정 사용 제한','설치 시 생기는 계정은 비활성화하거나 이름·비밀번호를 바꾼다'],
+ ['1-1-2','공용 계정 금지','1인 1계정 원칙'],
+ ['1-1-3','사용자 현행화','접속 계정 목록을 최소 1일 1회 갱신'],
+ ['1-1-4','개발자·테스트 계정 삭제','운영 서버에서는 개발용 계정을 없앤다'],
+ ['1-1-5','인사이동·퇴직 처리','권한 변경·삭제를 절차로 정한다']];
+const PW=[
+ ['1-2-1','복잡도','2종 조합 10자 이상 또는 3종 조합 8자 이상, 생년월일·전화번호 금지','cx'],
+ ['1-2-2','최초 로그인 시 변경','임시 비밀번호는 첫 로그인에서 바꾸게 한다'],
+ ['1-2-3','실패 시 잠금','일정 횟수 틀리면 자동 잠금','lk'],
+ ['1-2-4','재사용 제한','이전 비밀번호를 일정 횟수 이상 다시 쓰지 못하게 한다','rm'],
+ ['1-2-5','유효기간','최소 분기 1회 갱신(90일 이내)','mx']];
+const LAYERS=['Client','Network','Server','Application','Data'];
+const AREAS=['인증','접근통제','암호화','로깅·감사','프라이버시','침해사고 예방·대응'];
+const ENVS=['관리적 환경','기술적 환경','물리적 환경'];
+const TOOLS=['MBSA','Nmap','OWASP ZAP'];
+const SL=[
+ {k:'minLen',n:'최소 길이',min:4,max:20,v:8,u:'자'},
+ {k:'classes',n:'문자 종류 수',min:1,max:4,v:3,u:'종'},
+ {k:'lockout',n:'잠금 임계값 (0 = 제한 없음)',min:0,max:10,v:5,u:'회'},
+ {k:'remember',n:'재사용 제한 횟수 (0 = 제한 없음)',min:0,max:24,v:5,u:'회'},
+ {k:'maxDays',n:'유효기간 (0 = 무기한)',min:0,max:365,v:90,u:'일'},
+ {k:'minDays',n:'최소 사용 기간',min:0,max:30,v:1,u:'일'}];
+
+const P={};SL.forEach(s=>P[s.k]=s.v);
+const state={chk:{},cell:{},env:{},tool:{}};
+const $=id=>document.getElementById(id);
+
+// ---------- 판정 규칙 (SPEC.md 2절) ----------
+const judge={
+ cx:p=>(p.classes>=2&&p.minLen>=10)||(p.classes>=3&&p.minLen>=8)
+   ?[1,'양호']:[0,'취약'],
+ mx:p=>p.maxDays>=1&&p.maxDays<=90?[1,'양호']:[0,p.maxDays===0?'취약 · 무기한':'취약 · 90일 초과'],
+ lk:p=>p.lockout===0?[0,'취약 · 제한 없음']:p.lockout<=5?[1,'양호']:[0,'취약 · 기준(5회) 초과'],
+ rm:p=>p.remember>=1?[1,'양호']:[0,'취약 · 제한 없음'],
+ mn:p=>p.minDays>=1?[1,'양호']:[0,'취약 · 재사용 제한 우회 가능']};
+
+// ---------- 공격 시간 (SPEC.md 1-7) ----------
+const NSET={1:26,2:52,3:62,4:94};
+function fmt(sec){
+ if(sec<60)return (sec<10?sec.toFixed(1):Math.round(sec))+'초';
+ const m=sec/60;if(m<60)return Math.round(m)+'분';
+ const h=m/60;if(h<24)return Math.round(h)+'시간';
+ const d=h/24;if(d<365)return Math.round(d)+'일';
+ const y=d/365;if(y>=1e9)return '10억 년 이상';
+ return Math.round(y).toLocaleString('ko-KR')+'년';}
+function attack(p){
+ const avg=Math.pow(NSET[p.classes],p.minLen)/2;
+ const onRate=p.lockout===0?100:p.lockout/600;
+ return {off:fmt(avg/1e10),on:fmt(avg/onRate),onRate};}
+
+// ---------- 설정 문구 (SPEC.md 3절) ----------
+function conf(p){
+ return `# /etc/login.defs
+PASS_MIN_DAYS ${p.minDays}
+PASS_MAX_DAYS ${p.maxDays===0?99999:p.maxDays}${p.maxDays===0?' # 무기한(취약)':''}
+PASS_MIN_LEN ${p.minLen}
+PASS_WARN_AGE 7
+
+# /etc/security/pwquality.conf (pam_pwquality)
+minlen = ${p.minLen}
+minclass = ${p.classes}
+
+# /etc/security/faillock.conf (pam_faillock)
+${p.lockout===0?'# deny 미설정 — 잠금 없음(취약)':'deny = '+p.lockout}
+unlock_time = 600
+
+# /etc/pam.d/common-password (pam_pwhistory)
+password required pam_pwhistory.so remember=${p.remember} use_authtok
+
+# /etc/ssh/sshd_config
+PermitRootLogin no
+
+# /etc/profile (세션 타임아웃)
+TMOUT=600
+export TMOUT`;}
+
+// ---------- 렌더 ----------
+function itemRow(id,name,desc,auto){
+ const d=document.createElement('div');d.className='item';d.id='it-'+id;
+ d.innerHTML=`<input type="checkbox" id="c-${id}" aria-label="${name}">
+ <div class="t"><b><label for="c-${id}">${id} ${name}</label></b><small>${desc}</small></div>
+ <span class="badge" id="b-${id}"></span>`;
+ const c=d.querySelector('input');
+ if(auto){c.disabled=true;}
+ else c.onchange=()=>{state.chk[id]=c.checked;renderLeft();};
+ return d;}
+
+function buildLeft(){
+ ACCT.forEach(a=>$('acct').append(itemRow(a[0],a[1],a[2],false)));
+ PW.forEach(a=>$('pw').append(itemRow(a[0],a[1],a[2],!!a[3])));}
+
+function renderLeft(){
+ let done=0;
+ ACCT.forEach(a=>{const ok=!!state.chk[a[0]];done+=ok;
+  const b=$('b-'+a[0]);b.textContent=ok?'양호':'미확인';b.className='badge '+(ok?'ok':'');});
+ PW.forEach(a=>{let ok;
+  const b=$('b-'+a[0]),c=$('c-'+a[0]);
+  if(a[3]){const r=judge[a[3]](P);ok=r[0];b.textContent=r[1];b.className='badge '+(ok?'ok':'bad');c.checked=!!ok;}
+  else{ok=!!state.chk[a[0]];b.textContent=ok?'양호':'미확인';b.className='badge '+(ok?'ok':'');}
+  done+=ok?1:0;});
+ $('prog').textContent=`양호 ${done} / 10 항목`;}
+
+function buildMatrix(){
+ const t=$('matrix');
+ let h='<thead><tr><th scope="col"></th>'+AREAS.map((a,i)=>`<th scope="col" id="ah${i}">${a}</th>`).join('')+'</tr></thead><tbody>';
+ LAYERS.forEach((l,r)=>{h+=`<tr><th scope="row">${l}</th>`+AREAS.map((a,c)=>
+  `<td><button type="button" data-r="${r}" data-c="${c}" aria-pressed="false" aria-label="${l} × ${a}">·</button></td>`).join('')+'</tr>';});
+ t.innerHTML=h+'</tbody>';
+ t.onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  const k=b.dataset.r+'-'+b.dataset.c;state.cell[k]=!state.cell[k];
+  b.setAttribute('aria-pressed',!!state.cell[k]);b.textContent=state.cell[k]?'●':'·';renderMatrix();};}
+
+// 경고 단위는 기술영역(열): 열 전체가 비면 경고, 칸 단위 경고는 없음 (2-6)
+function renderMatrix(){
+ const w=[];
+ AREAS.forEach((a,c)=>{
+  const any=LAYERS.some((_,r)=>state.cell[r+'-'+c]);
+  $('ah'+c).className=any?'':'empty';
+  if(!any)w.push(`'${a}' 영역에 설계 항목이 없습니다`);});
+ $('mwarn').innerHTML=w.length?w.map(x=>`<div class="warn">⚠ ${x}</div>`).join(''):'<div class="good">경고 0건</div>';}
+
+function buildPrep(){
+ const mk=(arr,key,box)=>{arr.forEach((n,i)=>{
+  const l=document.createElement('label');l.className='chk';
+  l.innerHTML=`<input type="checkbox"> ${n}`;
+  l.firstChild.onchange=e=>{state[key][n]=e.target.checked;renderPrep();};
+  $(box).append(l);});};
+ mk(ENVS,'env','envs');mk(TOOLS,'tool','tools');}
+function renderPrep(){
+ const missEnv=ENVS.filter(n=>!state.env[n]);
+ const toolOk=TOOLS.some(n=>state.tool[n]);
+ const r=$('ready');
+ if(!missEnv.length&&toolOk){r.className='ready ok';r.textContent='구현 준비 완료';}
+ else{const m=[...missEnv];if(!toolOk)m.push('도구 1종 이상');
+  r.className='ready bad';r.textContent='구현 준비 미완료 — 빠진 항목: '+m.join(', ');}}
+
+function buildSliders(){
+ SL.forEach(s=>{
+  const d=document.createElement('div');d.className='sl';
+  d.innerHTML=`<div class="row"><label for="s-${s.k}">${s.n}</label><output id="o-${s.k}"></output></div>
+  <input type="range" id="s-${s.k}" min="${s.min}" max="${s.max}" value="${s.v}">
+  <div class="j"><span>${s.min}~${s.max}</span><span id="j-${s.k}"></span></div>`;
+  $('sliders').append(d);
+  d.querySelector('input').oninput=e=>{P[s.k]=+e.target.value;renderRight();renderLeft();};});}
+
+function renderRight(){
+ SL.forEach(s=>$('o-'+s.k).textContent=P[s.k]+s.u);
+ const setJ=(k,r)=>{const e=$('j-'+k);e.textContent=r[1];e.style.color=r[0]?'var(--ok)':'var(--bad)';};
+ const cx=judge.cx(P);setJ('minLen',cx);setJ('classes',cx);
+ setJ('lockout',judge.lk(P));setJ('remember',judge.rm(P));
+ setJ('maxDays',judge.mx(P));setJ('minDays',judge.mn(P));
+ const a=attack(P);
+ $('off').textContent=a.off;$('on').textContent=a.on;
+ $('onl').textContent=P.lockout===0?'온라인 (잠금 없음, 초당 100회)':`온라인 (잠금 ${P.lockout}회/600초)`;
+ $('atkinfo').textContent=`N=${NSET[P.classes]}, L=${P.minLen}, 평균 시간 = (N^L / 2) ÷ 초당 시도 횟수`;
+ $('conf').textContent=conf(P);}
+
+buildLeft();buildMatrix();buildPrep();buildSliders();
+renderLeft();renderMatrix();renderPrep();renderRight();
+</script>
+</body>
+</html>
